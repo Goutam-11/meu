@@ -1,0 +1,25 @@
+services:
+  scheduler:
+    build: .
+    command: bun run index.ts
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  worker:
+    build: .
+    command: bun run worker.ts
+    depends_on:
+      - redis
+    restart: unless-stopped
+    deploy:
+      replicas: 3
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+      
+  
+  

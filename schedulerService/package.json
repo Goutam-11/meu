@@ -1,0 +1,21 @@
+{
+  "name": "schedulerservice",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@openrouter/ai-sdk-provider": "^1.5.4",
+    "ai": "^6.0.27",
+    "bullmq": "^5.66.4",
+    "ccxt": "^4.5.32",
+    "cryptr": "^6.4.0",
+    "kiteconnect": "^5.1.0",
+    "mongodb": "^7.0.0"
+  }
+}
