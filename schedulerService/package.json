@@ -10,6 +10,7 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@ai-sdk/openai-compatible": "^2.0.37",
     "@openrouter/ai-sdk-provider": "^1.5.4",
     "ai": "^6.0.27",
     "bullmq": "^5.66.4",

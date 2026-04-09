@@ -13,7 +13,7 @@ export function startWatcher(collection: Collection<Document>) {
     fullDocument: "updateLookup"
   })
 
-  changeStream.on("change", (change: Document) => {
+  changeStream.on("change", async (change: Document) => {
     // Narrow the scope to operations that have a documentKey
     if (
       change.operationType === "insert" ||
@@ -30,22 +30,27 @@ export function startWatcher(collection: Collection<Document>) {
       }
   
       // For insert, update, or replace, fullDocument exists
-      const doc = change.fullDocument; 
+      let doc = change.fullDocument; 
       
       if (!doc) {
-        console.warn("No full document in event:", change);
-        return;
+        console.warn("Missing fullDocument, refetching...");
+        
+        const fresh = await collection.findOne({ _id: change.documentKey._id });
+        
+        if (!fresh) return;
+      
+        doc = fresh;
       }
   
       agentState.set(id, {
         id,
         userId: doc.userId,
-        nextRunAt: doc.nextRunAt,
+        nextRunAt: Date.now() + doc.market.agentCycles * 1000,
         type: doc.type,
         llmModel: doc.llmModel,
         strategy: doc.strategy,
-        exchange: doc.exchange,
-        credential: doc.credential,
+        exchangeId: doc.exchangeId.toString() ?? null,
+        credentialId: doc.credentialId.toString() ?? null,
         market: doc.market,
         risk: doc.risk,
         capital: doc.capital,

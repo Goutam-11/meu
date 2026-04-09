@@ -11,3 +11,16 @@ export const exchangeMap = {
 };
 
 export type ExchangeName = keyof typeof exchangeMap;
+
+export function formatSecondsToCycle(seconds: number): string {
+  if (seconds % 86400 === 0) {
+    return `${seconds / 86400}d`;
+  }
+  if (seconds % 3600 === 0) {
+    return `${seconds / 3600}h`;
+  }
+  if (seconds % 60 === 0) {
+    return `${seconds / 60}m`;
+  }
+  return `${seconds}s`;
+}

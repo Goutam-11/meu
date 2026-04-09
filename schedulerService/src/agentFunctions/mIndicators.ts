@@ -19,7 +19,7 @@ export function ema(values: number[], period: number): Array<number | null> {
   const alpha = 2 / (period + 1);
   for (let i = period; i < values.length; i++) {
     const val = values[i];
-    const current = val ?? 0 * alpha + prevEma * (1 - alpha);
+    const current = ((val ?? 0) * alpha) + (prevEma * (1 - alpha));
     result[i] = current;
     prevEma = current;
   }
