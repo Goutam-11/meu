@@ -10,14 +10,15 @@ import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { getCryptoTools } from "../agent/tools/cryptoTools/cryptoTools";
 import { connectDB } from "../db/db";
 import { ObjectId } from "mongodb";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 
 const exchange = new ccxt.delta({
   apiKey: process.env.DELTA_API_KEY,
   secret: process.env.DELTA_API_SECRET,
   urls: {
     api: {
-      public: 'https://cdn-ind.testnet.deltaex.org',
-      private: 'https://cdn-ind.testnet.deltaex.org'
+      public: 'https://api.india.delta.exchange',
+      private: 'https://api.india.delta.exchange'
     }
   }
 });
@@ -101,15 +102,19 @@ async function testAgent(
     .replace("TRADES_EXECUTED", trades.toString())
     .replace("ACCOUNT_STATUS", JSON.stringify(accountStatus,null,2));
   
-  const paidKey = process.env.OPENROUTER_API_KEY;
-  const op = createOpenRouter({
-    apiKey: paidKey,
+  const paidKey = process.env.NIM_API_KEY;
+  const nim = createOpenAICompatible({
+    name: 'nim',
+    baseURL: 'https://integrate.api.nvidia.com/v1',
+    headers: {
+      Authorization: `Bearer ${paidKey}`,
+    },
   });
   
   const cryptoTools = getCryptoTools({ exchange });
 
   const tradingAgent = new ToolLoopAgent({
-    model: op.chat("z-ai/glm-4.5-air:free"),
+    model: nim.chatModel("deepseek-ai/deepseek-v3.1"),
     tools: cryptoTools,
     instructions:
       "You are a trading Agent named meu.",
@@ -117,7 +122,7 @@ async function testAgent(
   });
   
   const result = await tradingAgent.generate({
-    prompt: newPrompt + " Check the market status and make decisions based on the data.this is a test run so trade in any token for test"
+    prompt: newPrompt + " Check the market status and make decisions based on the data.You can adjust leverage using tools provided."
   })
   return {
     finishReason: result.finishReason,

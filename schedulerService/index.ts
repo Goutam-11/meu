@@ -21,8 +21,8 @@ async function main() {
       capital: 1,
       temperature: 1,
       llmModel: 1,
-      exchange: 1,     
-      credential: 1,
+      credentialId: 1,
+      exchangeId: 1,
     })
     .toArray();
   console.log(agents)

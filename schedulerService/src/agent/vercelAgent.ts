@@ -6,8 +6,9 @@ import {
 } from "@/agentFunctions/cmFunctions";
 import { TPROMPT } from "@/agent/prompts/testPrompt";
 import { ToolLoopAgent } from "ai";
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+// import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { getCryptoTools } from "@/agent/tools/cryptoTools/cryptoTools";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 
 // const exchange = new ccxt.delta({
 //   apiKey: process.env.DELTA_API_KEY,
@@ -22,12 +23,13 @@ import { getCryptoTools } from "@/agent/tools/cryptoTools/cryptoTools";
 
 // exchange.setSandboxMode(true);
 
-type TestAgentParams = {
+type TradingAgentParams = {
   Coin: string[];
   exchange: Exchange;
   llmKey: string;
   model: string;
-  name: string
+  name: string;
+  cycles: string;
 };
 
 export async function tradingAgent(
@@ -35,15 +37,16 @@ export async function tradingAgent(
     exchange,
     llmKey,
     model,
-    name
-  }: TestAgentParams
+    name,
+    cycles
+  }: TradingAgentParams
 ) {
   const coins = Coin
   let analysis = ""
   let trades = ""
   for (const coin of coins) {
     const intraMarketData = await getIntradayIndicators(
-      "5m",
+      cycles,
       coin,
       30,
       exchange,
@@ -102,27 +105,33 @@ export async function tradingAgent(
   
   const newPrompt = TPROMPT.replace("COINS", coins.toString())
     .replace("MARKET_ANALYSIS", analysis)
-    .replace("OPEN_POSITIONS", openPositions.toString())
-    .replace("TRADES_EXECUTED", trades.toString())
+    .replace("OPEN_POSITIONS", openPositions.length.toString())
+    .replace("TRADES_EXECUTED", trades.length.toString())
     .replace("ACCOUNT_STATUS", accountStatus.toString())
     .replace("EXCHANGE_NAME", name);
   
-  const op = createOpenRouter({
-    apiKey: llmKey,
+  // const op = createOpenRouter({
+  //   apiKey: llmKey,
+  // });
+  const nim = createOpenAICompatible({
+    name: 'nim',
+    baseURL: 'https://integrate.api.nvidia.com/v1',
+    headers: {
+      Authorization: `Bearer ${llmKey}`,
+    },
   });
-  
   const cryptoTools = getCryptoTools({ exchange });
 
   const tradingAgent = new ToolLoopAgent({
-    model: op.chat(model),
+    model: nim.chatModel(model),
     tools: cryptoTools,
     instructions:
       "You are a trading Agent named meu.",
-    maxOutputTokens: 2000,
+    maxOutputTokens: 3000,
   });
   
   const result = await tradingAgent.generate({
-    prompt: newPrompt + " Check the market status and make decisions based on the data. This is a test environment so dont think about profit and losses , as i want to check the overal system functionality so trade to test."
+    prompt: newPrompt + "You are autonomously running in a system without human intervention. Check the market status and make decisions and trades based on the data. "
   })
   
   if ("text" in result.content) {

@@ -1,9 +1,10 @@
 import { Worker } from "bullmq";
 import { redis as connection } from "@/queue/queue";
 import { connectDB } from "@/db/db";
-import { exchangeMap, type ExchangeName } from "@/config/config";
+import { exchangeMap, formatSecondsToCycle, type ExchangeName } from "@/config/config";
 import { tradingAgent } from "@/agent/vercelAgent";
 import { isJSONArray } from "@ai-sdk/provider";
+import { ObjectId } from "mongodb";
 
 export async function startWorkers() {
   const db = await connectDB();
@@ -17,46 +18,57 @@ export async function startWorkers() {
     "agent-execution",
     async (job) => {
       try {
+        
         console.log("Execution started for agent", job.data.agentId);
   
         const { agentId, config } = job.data;
-  
+        const { exchangeId, credentialId } = config;
+        const credential = await db.collection("Credentials").findOne({ _id: new ObjectId(credentialId) });
+        if (!credential) {
+          throw new Error(`Credential not found: ${credentialId}`);
+        }
+        const exch = await db.collection("Exchange").findOne({ _id: new ObjectId(exchangeId) });
+        if (!exch) {
+          throw new Error(`Exchange not found: ${exchangeId}`);
+        }
         const Exchange =
-          exchangeMap[config.exchange.name.toUpperCase() as ExchangeName];
+          exchangeMap[exch.name.toUpperCase() as ExchangeName];
   
         if (!Exchange) {
-          throw new Error(`Exchange not found: ${config.exchange.name}`);
+          throw new Error(`Exchange not found: ${exch.name}`);
         }
   
-        console.log("Exchange class resolved");
+        // console.log("Exchange class resolved");
   
         const exchange = new Exchange({
-          apiKey: config.exchange.apiKey,
-          secret: config.exchange.secret,
-          ...(config.exchange.urls?.public &&
-            config.exchange.urls?.private && {
+          apiKey: exch?.apiKey,
+          secret: exch?.secret,
+          ...(exch?.urls?.public &&
+            exch?.urls?.private && {
               urls: {
                 api: {
-                  public: config.exchange.urls.public,
-                  private: config.exchange.urls.private,
+                  public: exch?.urls.public,
+                  private: exch?.urls.private,
                 },
               },
             }),
         });
   
-        console.log("Exchange instance created");
+        // console.log("Exchange instance created");
   
-        console.log("Running trading agent");
+        // console.log("Running trading agent");
+        const cycles = formatSecondsToCycle(config?.market?.agentCycles)
   
         const response = await tradingAgent({
           Coin: config.market.symbols,
           exchange,
-          llmKey: config.credential.apiKey,
+          llmKey: credential.apiKey,
           model: config.llmModel,
-          name: config.exchange.name,
+          name: exch.name,
+          cycles,
         });
   
-        console.log("Response received", response);
+        // console.log("Response received", response);
         let finalResponse: string;
         
         if (typeof response === "string") {
@@ -70,9 +82,9 @@ export async function startWorkers() {
         }
 
   
-        await runs.insertOne({ agentId, llmrResponse: finalResponse, createdAt: new Date() });
+        await runs.insertOne({ agentId, llmResponse: finalResponse, createdAt: new Date() });
   
-        console.log("Response saved to database");
+        // console.log("Response saved to database");
   
       } catch (err) {
         console.error("❌ Worker failed:", err);

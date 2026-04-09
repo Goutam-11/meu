@@ -6,8 +6,8 @@ const exchange = new ccxt.delta({
   secret: process.env.DELTA_API_SECRET,
   urls: {
     api: {
-      public: 'https://cdn-ind.testnet.deltaex.org',
-      private: 'https://cdn-ind.testnet.deltaex.org'
+      public: 'https://api.india.delta.exchange',
+      private: 'https://api.india.delta.exchange'
     }
   }
 });
@@ -38,7 +38,7 @@ const exchange = new ccxt.delta({
 // }
 
 // console.log("order: ",await exchange.createMarketBuyOrder("ETHUSD", 1, ));
-// console.log("open order:",await exchange.fetchTrades(coin))
-// console.log("open orders: ",await exchange.cancelAllOrders("ETHUSD"));
+
+// onsole.log("open orders: ",await exchange.cancelAllOrders("ETHUSD"));
 // console.log("positions closed: ",await exchange.cancelOrder("2152114932",coin));
-console.log(new Date())
+

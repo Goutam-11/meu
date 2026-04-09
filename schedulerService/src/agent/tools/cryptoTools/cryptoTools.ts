@@ -2,20 +2,29 @@ import { tool } from "ai";
 import type { Exchange } from "ccxt";
 import z from "zod";
 
+type Param = {
+  bracket_stop_loss_price?: number;
+  bracket_take_profit_price?: number;
+  bracket_stop_trigger_method?: string;
+}
 export function getCryptoTools({ exchange }: { exchange: Exchange }) {
   return {
-    createOrder: tool({
-      description: "Tool to create an order.",
+    createBuyOrder: tool({
+      description: "Tool to create an order.stop_loss and take_profit are optional and they take percentage as input (e.g. 0.01 for 1%).",
       inputSchema: z.object({
         symbol: z.string(),
         side: z.string(),
         amount: z.number(),
         price: z.number().optional(),
+        stop_loss: z.number().optional(),
+        take_profit: z.number().optional(),
       }),
-      execute: async ({ symbol, side, amount, price }) => {
+      execute: async ({ symbol, side, amount, price, stop_loss, take_profit }) => {
         try {
-          console.log("createOrder called with params:", { symbol, side, amount, price });
-    
+          console.log("createOrder called with params:", { symbol, side, amount, price, stop_loss, take_profit });
+          const params: Param = {};
+          if (stop_loss && take_profit) {
+            
           await exchange.loadMarkets();
     
           const ticker = await exchange.fetchTicker(symbol);
@@ -29,18 +38,17 @@ export function getCryptoTools({ exchange }: { exchange: Exchange }) {
             take_profit_trigger_price = last_price * 1.01;
           }
     
-          const params = {
-            bracket_stop_loss_price: stop_loss_trigger_price,
-            bracket_take_profit_price: take_profit_trigger_price,
-            bracket_stop_trigger_method: "mark_price",
-          };
+          params.bracket_stop_loss_price = stop_loss_trigger_price;
+          params.bracket_take_profit_price = take_profit_trigger_price;
+          params.bracket_stop_trigger_method = "mark_price";
+          }
     
           const order = await exchange.createMarketOrder(
             symbol,
             side,
             amount,
             price,
-            params
+            params,
           );
     
           console.log("order:", order);
@@ -68,17 +76,73 @@ export function getCryptoTools({ exchange }: { exchange: Exchange }) {
         }
       },
     }),
-    fetchTrades: tool({
-      description: "Tool to fetch trades.",
-      inputSchema: z.object({}),
-      execute: async () => {
+    setLeverage: tool({
+      description: "Tool to set leverage for a symbol.",
+      inputSchema: z.object({
+        symbol: z.string(),
+        leverage: z.number(),
+      }),
+      execute: async ({ symbol, leverage }) => {
         try {
-          const trades = await exchange.fetchMyTrades();
+          await exchange.setLeverage(leverage, symbol);
+          return {
+            success: true,
+            message: `Leverage set successfully for ${symbol}`,
+          };
+        } catch (error: any) {
+          console.error("setLeverage error:", error);
+          const parsedError = {
+            message: error.message || "Unknown error",
+            code: error.code || "UNKNOWN_ERROR",
+            type: error.name || "ExchangeError",
+          };
+          return {
+            success: false,
+            error: parsedError,
+          };
+        }
+      },
+    }),
+    fetchLeverage: tool({
+      description: "Tool to fetch leverage for a symbol.",
+      inputSchema: z.object({
+        symbol: z.string(),
+      }),
+      execute: async ({ symbol }) => {
+        try {
+          const leverage = await exchange.fetchLeverage(symbol);
+          return {
+            success: true,
+            data: leverage,
+            message: `Leverage fetched successfully for ${symbol}`,
+          };
+        } catch (error: any) {
+          console.error("fetchLeverage error:", error);
+          const parsedError = {
+            message: error.message || "Unknown error",
+            code: error.code || "UNKNOWN_ERROR",
+            type: error.name || "ExchangeError",
+          };
+          return {
+            success: false,
+            error: parsedError,
+          };
+        }
+      },
+    }),
+    fetchTrades: tool({
+      description: "Tool to fetch trades.Use limit to fetch a limited number of trades to save on tokens.Default is 10",
+      inputSchema: z.object({
+        limit: z.number().optional().default(10),
+      }),
+      execute: async ({ limit }) => {
+        try {
+          const trades = await exchange.fetchMyTrades(undefined, undefined,limit);
           console.log("fetch Trades: ", trades)
           return {
             success: true,
             data: trades,
-            message: `Trades fetched successfully`,
+            message: `${limit} Trades fetched successfully`,
           };
         } catch (error: any) {
           console.error("fetchTrades error:", error);

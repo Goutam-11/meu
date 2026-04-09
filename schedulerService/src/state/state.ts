@@ -5,11 +5,8 @@ export type AgentRuntime = {
   type: "CRYPTO" | "STOCK";
   llmModel?: string;
   strategy: "ALGO_TRADING" | "LLM_TRADING" | "HYBRID";
-  credential: {
-    type: "OPENROUTER" | "OPENAI" | "ANTHROPIC";
-    apiKey: string
-  }
-  exchange: ExchangeRuntime;
+  exchangeId: string;
+  credentialId?: string;
   market: {
     symbols: string[];
     agentCycles: number;
